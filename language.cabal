@@ -18,4 +18,6 @@ Executable  vooj
                  ,    SDL > 0.4.0
                  ,    containers >= 0.4.2.1
                  ,    directory >= 1.1.0.2
+                 ,    SDL-gfx >= 0.6.0
+                 ,    stm >= 2.2
                  
