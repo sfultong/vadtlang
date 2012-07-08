@@ -1,8 +1,13 @@
+--{-# LANGUAGE DeriveGeneric #-}
+
 module MainState 
 	( MainState(..)
-	, InputContext(..)
-	, Point
-	, initMainState
+	, SaveableState(..)
+	, makeDefaultState
+	, changePosition
+	, changeGrid
+	, changeSaveable
+	, changeGui
 	, hasIconAt
 	, getIconAt
 	, getIconAtCursor
@@ -13,67 +18,63 @@ module MainState
 	) where
 
 import Graphics.UI.SDL as SDL
-import Data.Map as Map
+import qualified Data.Map as Map
 
 import Icon as Icon
+import qualified GuiState as GUI
 
-startXSize = 640
-startYSize = 480
-
-type Point = (Int, Int)
-
-data InputContext = IsInsert {
-} | NoContext
-
-data MainState = MainState {
-   surface :: Surface,
-   icons :: Icon.IconSet,
-   position :: Point,
-	screenSize :: (Int, Int),
-   grid :: Map.Map Point Int,
-	inputContext :: InputContext
+data SaveableState = SaveableState {
+   position :: GUI.Point,
+   grid :: Map.Map GUI.Point Int
 }
 
+data MainState = MainState {
+	saveableState :: SaveableState,
+	guiState :: GUI.GuiState
+} 
+
+-- accessors
+changeGrid :: (Map.Map GUI.Point Int -> Map.Map GUI.Point Int) -> SaveableState -> SaveableState
+changeGrid f ss = ss { grid = f (grid ss) }
+
+changeSaveable :: (SaveableState -> SaveableState) -> MainState -> MainState
+changeSaveable f ms = ms { saveableState = f (saveableState ms) } 
+
+changePosition :: (GUI.Point -> GUI.Point) -> SaveableState -> SaveableState
+changePosition f ss = ss { position = f (position ss) }
+
+changeGui :: (GUI.GuiState -> GUI.GuiState) -> MainState -> MainState
+changeGui f ms = ms { guiState = f (guiState ms) }
+
+-- setup
 testInitMap = Map.fromList [((0,0), 1), ((0,1), 2), ((0,(-1)), 2)]
 
-initMainState = do
-	SDL.init [InitEverything]
-	setVideoMode startXSize startYSize 32 [SDL.DoubleBuf]
-	icons_ <- getDefaultIcons
-	screen <- getVideoSurface
-	return $ MainState
-		screen
-		icons_
-		(0,0)
-		(startXSize, startYSize)
-		testInitMap
-		NoContext
+makeDefaultState :: GUI.GuiState -> MainState
+makeDefaultState = MainState (SaveableState (0,0) testInitMap)
 
-hasIconAt :: MainState -> Point -> Bool
-hasIconAt mainState point = Map.member point $ grid mainState
+-- exported functions
+hasIconAt :: MainState -> GUI.Point -> Bool
+hasIconAt mainState point = Map.member point . grid . saveableState $ mainState
 
-getIconAt :: MainState -> Point -> Icon.Icon
+getIconAt :: MainState -> GUI.Point -> Icon.Icon
 getIconAt mainState point = let
-		_icons = icons mainState
-		_grid = grid mainState
+		_icons = GUI.icons . guiState $ mainState
+		_grid = grid . saveableState $ mainState
 	in Icon.getByID _icons $ _grid Map.! point
 
 getIconAtCursor :: MainState -> Icon.Icon
-getIconAtCursor mainState = getIconAt mainState $ position mainState
+getIconAtCursor mainState = getIconAt mainState . position . saveableState $ mainState
 
-setIconAt :: Point -> Int -> MainState -> MainState 
-setIconAt point id mainState = let
-		grid_ = grid mainState
-		newGrid = Map.insert point id grid_
-	in mainState { grid = newGrid }
+setIconAt :: GUI.Point -> Int -> MainState -> MainState 
+setIconAt point id = changeSaveable (changeGrid (Map.insert point id))
 	
 setIconAtCursor :: Int -> MainState -> MainState 
-setIconAtCursor id mainState = setIconAt (position mainState) id mainState 
+setIconAtCursor id mainState = setIconAt (position $ saveableState mainState) id mainState 
 
-removeIconAt :: Point -> MainState -> MainState 
-removeIconAt point mainState = let
-		newGrid = Map.delete point (grid mainState) 
-	in mainState { grid = newGrid }
+removeIconAt :: GUI.Point -> MainState -> MainState 
+removeIconAt point = changeSaveable (changeGrid (Map.delete point))
 
 removeIconAtCursor :: MainState -> MainState
-removeIconAtCursor mainState = removeIconAt (position mainState) mainState 
+removeIconAtCursor mainState = removeIconAt (position $ saveableState mainState) mainState 
+
+
