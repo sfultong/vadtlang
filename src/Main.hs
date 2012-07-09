@@ -2,6 +2,8 @@ import qualified Graphics.UI.SDL as SDL
 import qualified Graphics.UI.SDL.Primitives as PSDL
 import qualified Data.Map as Map
 import qualified Control.Concurrent.STM as STM
+import qualified Data.ByteString as B
+import qualified Data.Serialize as Serial
 
 import MainState
 import GuiState
@@ -51,10 +53,24 @@ main = do
 	let state = makeDefaultState guiState
 	tvms <- STM.atomically . STM.newTVar $ state
 	drawScreen state
-	quitHandler tvms
+	eventHandler tvms
 
-quitHandler :: STM.TVar MainState -> IO ()
-quitHandler tvms = do
+dataFile = "language.dat"
+
+saveState :: MainState -> IO ()
+saveState ms = B.writeFile dataFile . Serial.encode . saveableState $ ms
+
+loadState :: MainState -> IO (MainState)
+loadState ms = do
+	bstring <- B.readFile dataFile
+	case Serial.decode bstring of
+		Left s -> do
+			putStrLn $ "error reading/decoding file: " ++ s
+			return ms
+		Right newSaveableState -> return ms { saveableState = newSaveableState }
+
+eventHandler :: STM.TVar MainState -> IO ()
+eventHandler tvms = do
 	mainState <- STM.atomically . STM.readTVar $ tvms
 	let inputContext_ = inputContext $ guiState mainState
 	e <- SDL.waitEvent
@@ -67,7 +83,7 @@ quitHandler tvms = do
 						let newMainState = changeSaveable (changePosition f) oldMainState
 						drawScreen newMainState
 						STM.atomically $ STM.writeTVar tvms newMainState
-						quitHandler tvms
+						eventHandler tvms
 				in case k of 
 					SDL.SDLK_u -> doDirectionKey (\(x, y) -> (x, y - 1)) -- UP
 					SDL.SDLK_e-> doDirectionKey (\(x, y) -> (x, y + 1)) -- DOWN
@@ -77,9 +93,19 @@ quitHandler tvms = do
 						STM.atomically $ do
 							oldMainState <- STM.readTVar tvms
 							STM.writeTVar tvms $ changeGui (changeContext (const IsInsert)) oldMainState
-						quitHandler tvms
-					SDL.SDLK_ESCAPE -> return ()
-					otherwise -> quitHandler tvms
+						eventHandler tvms
+					SDL.SDLK_QUOTE -> do -- LOAD
+						oldMainState <- STM.atomically . STM.readTVar $ tvms
+						ms <- loadState oldMainState
+						STM.atomically $ STM.writeTVar tvms ms
+						drawScreen ms
+						eventHandler tvms
+					SDL.SDLK_l -> do -- SAVE
+						ms <- STM.atomically $ STM.readTVar tvms
+						saveState ms
+						eventHandler tvms
+					SDL.SDLK_ESCAPE -> return () -- EXIT
+					otherwise -> eventHandler tvms
 			IsInsert ->	let
 					setNewIcon id = do
 						newMainState <- STM.atomically $ do
@@ -87,12 +113,12 @@ quitHandler tvms = do
 							STM.writeTVar tvms . setIconAtCursor id . changeGui (changeContext (const NoContext)) $ oldMainState
 							STM.readTVar tvms
 						drawScreen newMainState
-						quitHandler tvms
+						eventHandler tvms
 					cancelInput = do
 						STM.atomically $ do
 							oldMainState <- STM.readTVar tvms
 							STM.writeTVar tvms $ changeGui (changeContext (const NoContext)) oldMainState
-						quitHandler tvms
+						eventHandler tvms
 				in case k of
 					SDL.SDLK_i -> do -- clear icon
 						newMainState <- STM.atomically $ do
@@ -100,11 +126,11 @@ quitHandler tvms = do
 							STM.writeTVar tvms . removeIconAtCursor . changeGui (changeContext (const NoContext)) $ oldMainState
 							STM.readTVar tvms
 						drawScreen newMainState
-						quitHandler tvms
+						eventHandler tvms
 					SDL.SDLK_u -> setNewIcon 1
 					SDL.SDLK_e -> setNewIcon 2
 					SDL.SDLK_ESCAPE -> cancelInput
 					otherwise -> cancelInput
 				
-		otherwise -> quitHandler tvms
+		otherwise -> eventHandler tvms
 			

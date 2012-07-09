@@ -1,4 +1,4 @@
---{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module MainState 
 	( MainState(..)
@@ -17,7 +17,8 @@ module MainState
 	, removeIconAtCursor
 	) where
 
-import Graphics.UI.SDL as SDL
+import GHC.Generics
+import Data.Serialize
 import qualified Data.Map as Map
 
 import Icon as Icon
@@ -26,7 +27,9 @@ import qualified GuiState as GUI
 data SaveableState = SaveableState {
    position :: GUI.Point,
    grid :: Map.Map GUI.Point Int
-}
+} deriving Generic
+
+instance Serialize SaveableState
 
 data MainState = MainState {
 	saveableState :: SaveableState,
