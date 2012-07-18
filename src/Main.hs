@@ -36,7 +36,7 @@ drawScreen mainstate = let
 		drawIcon (x,y) = case hasIconAt mainstate (x,y) of
 			True -> do 
 				let drawIcon = getIconAt mainstate (x,y)
-				SDL.blitSurface (Icon.pic drawIcon) Nothing surface_ . Just $ SDL.Rect
+				SDL.blitSurface (Icon.pic drawIcon) (Icon.offset drawIcon) surface_ . Just $ SDL.Rect
 					(centerX + (x - px) * (iconXSize + 1))
 					(centerY + (y - py) * (iconYSize + 1))
 					0 0
@@ -73,6 +73,7 @@ eventHandler :: STM.TVar MainState -> IO ()
 eventHandler tvms = do
 	mainState <- STM.atomically . STM.readTVar $ tvms
 	let inputContext_ = inputContext $ guiState mainState
+	let changeMainState f = STM.atomically $ STM.readTVar tvms >>= (STM.writeTVar tvms . f) >> STM.readTVar tvms
 	e <- SDL.waitEvent
 	case e of
 		SDL.Quit -> return ()
@@ -93,6 +94,11 @@ eventHandler tvms = do
 						STM.atomically $ do
 							oldMainState <- STM.readTVar tvms
 							STM.writeTVar tvms $ changeGui (changeContext (const IsInsert)) oldMainState
+						eventHandler tvms
+					SDL.SDLK_d -> do -- TEXT INPUT
+						STM.atomically $ do
+							oldMainState <- STM.readTVar tvms
+							STM.writeTVar tvms $ changeGui (changeContext (const IsTextInsert)) oldMainState
 						eventHandler tvms
 					SDL.SDLK_QUOTE -> do -- LOAD
 						oldMainState <- STM.atomically . STM.readTVar $ tvms
@@ -131,6 +137,44 @@ eventHandler tvms = do
 					SDL.SDLK_e -> setNewIcon 2
 					SDL.SDLK_ESCAPE -> cancelInput
 					otherwise -> cancelInput
-				
+			IsTextInsert -> let 
+					setNewIcon name = do
+						newMainState <- changeMainState $ changeSaveable (changePosition (\(x, y) -> (x + 1, y))) . setIconAtCursorByName name 
+						drawScreen newMainState
+						eventHandler tvms
+					cancelInput = do
+						STM.atomically $ do
+							oldMainState <- STM.readTVar tvms
+							STM.writeTVar tvms $ changeGui (changeContext (const NoContext)) oldMainState
+						eventHandler tvms
+				in case k of
+					SDL.SDLK_a -> setNewIcon "a"
+					SDL.SDLK_b -> setNewIcon "b"
+					SDL.SDLK_c -> setNewIcon "c"
+					SDL.SDLK_d -> setNewIcon "d"
+					SDL.SDLK_e -> setNewIcon "e"
+					SDL.SDLK_f -> setNewIcon "f"
+					SDL.SDLK_g -> setNewIcon "g"
+					SDL.SDLK_h -> setNewIcon "h"
+					SDL.SDLK_i -> setNewIcon "i"
+					SDL.SDLK_j -> setNewIcon "j"
+					SDL.SDLK_k -> setNewIcon "k"
+					SDL.SDLK_l -> setNewIcon "l"
+					SDL.SDLK_m -> setNewIcon "m"
+					SDL.SDLK_n -> setNewIcon "n"
+					SDL.SDLK_o -> setNewIcon "o"
+					SDL.SDLK_p -> setNewIcon "p"
+					SDL.SDLK_q -> setNewIcon "q"
+					SDL.SDLK_r -> setNewIcon "r"
+					SDL.SDLK_s -> setNewIcon "s"
+					SDL.SDLK_t -> setNewIcon "t"
+					SDL.SDLK_u -> setNewIcon "u"
+					SDL.SDLK_v -> setNewIcon "v"
+					SDL.SDLK_w -> setNewIcon "w"
+					SDL.SDLK_x -> setNewIcon "x"
+					SDL.SDLK_y -> setNewIcon "y"
+					SDL.SDLK_z -> setNewIcon "z"
+					SDL.SDLK_ESCAPE -> cancelInput
+					otherwise -> cancelInput
 		otherwise -> eventHandler tvms
 			

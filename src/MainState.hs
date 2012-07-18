@@ -13,6 +13,7 @@ module MainState
 	, getIconAtCursor
 	, setIconAt
 	, setIconAtCursor
+	, setIconAtCursorByName
 	, removeIconAt
 	, removeIconAtCursor
 	) where
@@ -73,6 +74,12 @@ setIconAt point id = changeSaveable (changeGrid (Map.insert point id))
 	
 setIconAtCursor :: Int -> MainState -> MainState 
 setIconAtCursor id mainState = setIconAt (position $ saveableState mainState) id mainState 
+
+setIconAtCursorByName :: String -> MainState -> MainState
+setIconAtCursorByName name mainState = let
+		iconSet = GUI.icons . guiState $ mainState
+		id = getID iconSet name
+	in setIconAtCursor id mainState
 
 removeIconAt :: GUI.Point -> MainState -> MainState 
 removeIconAt point = changeSaveable (changeGrid (Map.delete point))

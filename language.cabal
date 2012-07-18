@@ -9,7 +9,7 @@ category:      Languages
 stability:     Experimental
 cabal-version: >= 1.6
 build-type:    Simple
-data-files:    data/functions/*.bmp
+data-files:    data/functions/*.bmp, data/*.bmp
 
 Executable  vooj
     Main-is:          Main.hs

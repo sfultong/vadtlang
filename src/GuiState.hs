@@ -14,7 +14,7 @@ import Icon as Icon
 type Point = (Int, Int)
 
 data InputContext = IsInsert {
-} | NoContext 
+} | IsTextInsert | NoContext 
 
 data GuiState = GuiState {
 	surface :: Surface,
