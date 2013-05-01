@@ -45,16 +45,20 @@ changeSaveable :: (SaveableState -> SaveableState) -> MainState -> MainState
 changeSaveable f ms = ms { saveableState = f (saveableState ms) } 
 
 changePosition :: (GUI.Point -> GUI.Point) -> SaveableState -> SaveableState
-changePosition f ss = ss { position = f (position ss) }
+changePosition f ss = let
+		newPosition = f (position ss) 
+	in case newPosition of
+		(0,0) -> ss
+		_ -> ss { position = newPosition }
 
 changeGui :: (GUI.GuiState -> GUI.GuiState) -> MainState -> MainState
 changeGui f ms = ms { guiState = f (guiState ms) }
 
 -- setup
-testInitMap = Map.fromList [((0,0), 1), ((0,1), 2), ((0,(-1)), 2)]
+testInitMap = Map.fromList [((0,0), 30)]
 
 makeDefaultState :: GUI.GuiState -> MainState
-makeDefaultState = MainState (SaveableState (0,0) testInitMap)
+makeDefaultState = MainState (SaveableState (0,1) testInitMap)
 
 -- exported functions
 hasIconAt :: MainState -> GUI.Point -> Bool
