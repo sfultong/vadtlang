@@ -15,6 +15,9 @@ import qualified Data.Map as Map
 import qualified Data.IntMap as IntMap
 import qualified Graphics.UI.SDL as SDL
 
+iconDataDir = "/tmp/share/vooj-0.1/data"
+functionIconDir = iconDataDir ++ "/functions"
+
 data Icon = Icon {
    name :: String,
 	offset :: Maybe SDL.Rect,
@@ -63,21 +66,24 @@ getID iconSet name = (nameKey iconSet) Map.! name
 
 getTextIcons :: IO [Icon]
 getTextIcons = let
-		(startX, startY) = (11, 9)
+		(startX, startY) = (10, 9)
 		(sizeX, sizeY) = (11,13)
 		offsets = iterate (\(x,y) -> (x + sizeX, y)) (startX, startY)
 		rects = map ((\f -> f sizeX sizeY) . uncurry SDL.Rect) offsets
 	in do
-		fontMap <- SDL.loadBMP "/tmp/share/vooj-0.1/data/letters.bmp"
+		fontMap <- SDL.loadBMP (iconDataDir ++ "/letters.bmp") 
 		let icons = zipWith (\x y -> Icon (x : []) (Just y) fontMap) ['a' .. 'z'] rects
 		return icons
 
 getDefaultIcons :: IO IconSet
 getDefaultIcons = do
-	dirContents <- getDirectoryContents "/tmp/share/vooj-0.1/data/functions"
-	let imageNames = map ("/tmp/share/vooj-0.1/data/functions/" ++) . filter (\x -> x /= "." && x /= "..") $ dirContents
-	images <- mapM SDL.loadBMP imageNames
-	let funIcons = zipWith (flip Icon Nothing) imageNames images
+	dirContents <- getDirectoryContents functionIconDir
+	let
+		imageNames = filter (\x -> x /= "." && x /= "..") $ dirContents
+		fullImageNames = map ((functionIconDir ++) . ('/' :)) imageNames
+		cleanedFunctionNames = map (takeWhile (/= '.')) imageNames
+	images <- mapM SDL.loadBMP fullImageNames
+	let funIcons = zipWith (flip Icon Nothing) cleanedFunctionNames images
 	textIcons <- getTextIcons
 	return . foldr Icon.insert Icon.empty $ (funIcons ++ textIcons)
 	

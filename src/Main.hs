@@ -113,11 +113,8 @@ eventHandler tvms = do
 					SDL.SDLK_ESCAPE -> return () -- EXIT
 					otherwise -> eventHandler tvms
 			IsInsert ->	let
-					setNewIcon id = do
-						newMainState <- STM.atomically $ do
-							oldMainState <- STM.readTVar tvms
-							STM.writeTVar tvms . setIconAtCursor id . changeGui (changeContext (const NoContext)) $ oldMainState
-							STM.readTVar tvms
+					setNewIcon fun = do
+						newMainState <- changeMainState $ changeGui (changeContext (const NoContext)) . (setIconAtCursorByName fun)
 						drawScreen newMainState
 						eventHandler tvms
 					cancelInput = do
@@ -133,8 +130,9 @@ eventHandler tvms = do
 							STM.readTVar tvms
 						drawScreen newMainState
 						eventHandler tvms
-					SDL.SDLK_u -> setNewIcon 1
-					SDL.SDLK_e -> setNewIcon 2
+					SDL.SDLK_u -> setNewIcon "1"
+					SDL.SDLK_e -> setNewIcon "2"
+					SDL.SDLK_o -> setNewIcon "3"
 					SDL.SDLK_ESCAPE -> cancelInput
 					otherwise -> cancelInput
 			IsTextInsert -> let 
