@@ -7,6 +7,7 @@ module Icon
 	, getByID
 	, getID
 	, getDefaultIcons
+	, startIconIndex
 	) where
 
 import System.Directory
@@ -19,7 +20,7 @@ iconDataDir = "/tmp/share/vooj-0.1/data"
 functionIconDir = iconDataDir ++ "/functions"
 
 data Icon = Icon {
-   name :: String,
+   definition :: String,
 	offset :: Maybe SDL.Rect,
    pic :: SDL.Surface
 }
@@ -40,20 +41,8 @@ insert icon (IconSet iData nameKey) = let
 			True -> 1
 			False -> (+1) . fst $ IntMap.findMax iData
 		iData_ = IntMap.insert intKey icon iData 
-		nameKey_ = Map.insert (name icon) intKey nameKey
+		nameKey_ = Map.insert (definition icon) intKey nameKey
 	in IconSet iData_ nameKey_ 
-
-{-
-insert :: String -> Maybe Rect -> SDL.Surface -> IconSet -> IconSet
-insert name_ offset_ pic_ (IconSet iData nameKey) = let
-		icon = Icon name_ offset_ pic_
-		intKey = case IntMap.null iData of
-			True -> 1
-			False -> (+1) . fst $ IntMap.findMax iData
-		iData_ = IntMap.insert intKey icon iData 
-		nameKey_ = Map.insert name_ intKey nameKey
-	in IconSet iData_ nameKey_ 
--}
 
 getByName :: IconSet -> String -> Icon
 getByName (IconSet iData nameKey) name_ = (iData IntMap.!) $ nameKey Map.! name_
@@ -72,18 +61,28 @@ getTextIcons = let
 		rects = map ((\f -> f sizeX sizeY) . uncurry SDL.Rect) offsets
 	in do
 		fontMap <- SDL.loadBMP (iconDataDir ++ "/letters.bmp") 
-		let icons = zipWith (\x y -> Icon (x : []) (Just y) fontMap) ['a' .. 'z'] rects
+		let
+			createName l = "(:) '" ++ (l : "'")
+			icons = zipWith (\x y -> Icon (createName x) (Just y) fontMap) ['a' .. 'z'] rects
 		return icons
 
 getDefaultIcons :: IO IconSet
 getDefaultIcons = do
 	dirContents <- getDirectoryContents functionIconDir
 	let
-		imageNames = filter (\x -> x /= "." && x /= "..") $ dirContents
-		fullImageNames = map ((functionIconDir ++) . ('/' :)) imageNames
-		cleanedFunctionNames = map (takeWhile (/= '.')) imageNames
-	images <- mapM SDL.loadBMP fullImageNames
-	let funIcons = zipWith (flip Icon Nothing) cleanedFunctionNames images
+		makeIcon (n, d) = do
+			surface <- SDL.loadBMP ( functionIconDir ++ "/" ++ n ++ ".bmp")
+			return $ Icon d Nothing surface
+	funIcons <- mapM makeIcon predefinedFunctions
 	textIcons <- getTextIcons
 	return . foldr Icon.insert Icon.empty $ (funIcons ++ textIcons)
-	
+
+-- association list of icon names to their code definitions
+predefinedFunctions :: [(String, String)]
+predefinedFunctions =
+	[ ( "start", "" ) 
+	, ( "emptylist", "[]" )
+	, ( "putstrln", "putStrLn" )
+	]
+
+startIconIndex = 26 + length predefinedFunctions

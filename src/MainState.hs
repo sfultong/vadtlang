@@ -9,8 +9,10 @@ module MainState
 	, changeSaveable
 	, changeGui
 	, hasIconAt
+	, hasIconAtSS
 	, getIconAt
 	, getIconAtCursor
+	, getIconID
 	, setIconAt
 	, setIconAtCursor
 	, setIconAtCursorByName
@@ -55,7 +57,7 @@ changeGui :: (GUI.GuiState -> GUI.GuiState) -> MainState -> MainState
 changeGui f ms = ms { guiState = f (guiState ms) }
 
 -- setup
-testInitMap = Map.fromList [((0,0), 30)]
+testInitMap = Map.fromList [((0,0), Icon.startIconIndex)]
 
 makeDefaultState :: GUI.GuiState -> MainState
 makeDefaultState = MainState (SaveableState (0,1) testInitMap)
@@ -63,6 +65,9 @@ makeDefaultState = MainState (SaveableState (0,1) testInitMap)
 -- exported functions
 hasIconAt :: MainState -> GUI.Point -> Bool
 hasIconAt mainState point = Map.member point . grid . saveableState $ mainState
+
+hasIconAtSS :: SaveableState -> GUI.Point -> Bool
+hasIconAtSS ss point = Map.member point . grid $ ss
 
 getIconAt :: MainState -> GUI.Point -> Icon.Icon
 getIconAt mainState point = let
@@ -72,6 +77,9 @@ getIconAt mainState point = let
 
 getIconAtCursor :: MainState -> Icon.Icon
 getIconAtCursor mainState = getIconAt mainState . position . saveableState $ mainState
+
+getIconID :: SaveableState -> Int
+getIconID ss = (grid ss) Map.! (position ss)
 
 setIconAt :: GUI.Point -> Int -> MainState -> MainState 
 setIconAt point id = changeSaveable (changeGrid (Map.insert point id))
