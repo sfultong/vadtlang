@@ -57,6 +57,7 @@ main = do
 	eventHandler tvms
 
 dataFile = "language.dat"
+compileFile = "out.hs"
 
 saveState :: MainState -> IO ()
 saveState ms = B.writeFile dataFile . Serial.encode . saveableState $ ms
@@ -110,6 +111,12 @@ eventHandler tvms = do
 					SDL.SDLK_l -> do -- SAVE
 						ms <- STM.atomically $ STM.readTVar tvms
 						saveState ms
+						eventHandler tvms
+					SDL.SDLK_z -> do -- COMPILE
+						ms <- STM.atomically $ STM.readTVar tvms
+						case Compile.compileMS ms of
+							Just s -> writeFile compileFile ("main = " ++ s)
+							Nothing -> return ()
 						eventHandler tvms
 					SDL.SDLK_ESCAPE -> return () -- EXIT
 					otherwise -> eventHandler tvms

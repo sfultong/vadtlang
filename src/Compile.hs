@@ -1,11 +1,13 @@
 
-module Compile where
+module Compile 
+	( compileMS
+	) where
 
 import Prelude hiding (Right, Left)
 import Data.List
 
 import qualified MainState as MS
-import GuiState (Point)
+import GuiState (Point, GuiState(icons))
 import qualified Icon
 
 -- TODO - refactor so that Main.hs uses directions (probably should put point and direction stuff in their own module)
@@ -16,7 +18,7 @@ data CompileState = CompileState
 	{ saveableState :: MS.SaveableState
 	, iconSet :: Icon.IconSet
 	, fromDirection :: Direction
-	, programOutput :: String -- should be a rope or some AST representation, or really anything but a string
+	, programOutput :: String -- unused, should remove
 }
 
 otherDirections :: Direction -> [Direction]
@@ -56,7 +58,7 @@ makeInitialCompileState ss iconSet = let
 		foundIcons = map (\d -> (d, MS.hasIconAtSS ss (getOffset d))) allDirections
 		foundDirection = find snd foundIcons >>= (return . fst)
 		changePos d = MS.changePosition (const (getOffset d))
-	in foundDirection >>= (\d -> return $ CompileState (changePos d ss) iconSet (oppositeDirection d) "main = ")
+	in foundDirection >>= (\d -> return $ CompileState (changePos d ss) iconSet (oppositeDirection d) "")
 
 compileR :: CompileState -> String
 compileR cs = let
@@ -67,3 +69,6 @@ compileR cs = let
 
 compile :: MS.SaveableState -> Icon.IconSet -> Maybe String
 compile ss iconSet = makeInitialCompileState ss iconSet >>= (return . compileR)
+
+compileMS :: MS.MainState -> Maybe String
+compileMS ms = compile ( MS.saveableState ms ) ( icons $ MS.guiState ms )

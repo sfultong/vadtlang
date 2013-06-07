@@ -80,7 +80,7 @@ getDefaultIcons = do
 -- association list of icon names to their code definitions
 predefinedFunctions :: [(String, String)]
 predefinedFunctions =
-	[ ( "start", "" ) 
+	[ ( "start", "main = " ) 
 	, ( "emptylist", "[]" )
 	, ( "putstrln", "putStrLn" )
 	]
