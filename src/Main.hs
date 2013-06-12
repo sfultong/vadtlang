@@ -9,6 +9,7 @@ import MainState
 import GuiState
 import qualified Compile
 import qualified Icon 
+import qualified Point as P
 
 iconXSize = 16
 iconYSize = 16
@@ -81,17 +82,17 @@ eventHandler tvms = do
 		SDL.Quit -> return ()
 		SDL.KeyDown (SDL.Keysym k _ _) -> case inputContext_ of
 			NoContext -> let
-					doDirectionKey f = do
+					doDirectionKey d = do
 						oldMainState <- STM.atomically . STM.readTVar $ tvms
-						let newMainState = changeSaveable (changePosition f) oldMainState
+						let newMainState = changeSaveable (changePosition (P.moveByDirection d)) oldMainState
 						drawScreen newMainState
 						STM.atomically $ STM.writeTVar tvms newMainState
 						eventHandler tvms
 				in case k of 
-					SDL.SDLK_u -> doDirectionKey (\(x, y) -> (x, y - 1)) -- UP
-					SDL.SDLK_e-> doDirectionKey (\(x, y) -> (x, y + 1)) -- DOWN
-					SDL.SDLK_t -> doDirectionKey (\(x, y) -> (x + 1, y)) -- RIGHT
-					SDL.SDLK_h -> doDirectionKey (\(x, y) -> (x - 1, y)) -- LEFT
+					SDL.SDLK_u -> doDirectionKey P.Up
+					SDL.SDLK_e-> doDirectionKey P.Down
+					SDL.SDLK_t -> doDirectionKey P.Right
+					SDL.SDLK_h -> doDirectionKey P.Left 
 					SDL.SDLK_i -> do -- INPUT
 						STM.atomically $ do
 							oldMainState <- STM.readTVar tvms
@@ -154,32 +155,32 @@ eventHandler tvms = do
 							STM.writeTVar tvms $ changeGui (changeContext (const NoContext)) oldMainState
 						eventHandler tvms
 				in case k of
-					SDL.SDLK_a -> setNewIcon "(:) \"a\""
-					SDL.SDLK_b -> setNewIcon "(:) \"b\""
-					SDL.SDLK_c -> setNewIcon "(:) \"c\""
-					SDL.SDLK_d -> setNewIcon "(:) \"d\""
-					SDL.SDLK_e -> setNewIcon "(:) \"e\""
-					SDL.SDLK_f -> setNewIcon "(:) \"f\""
-					SDL.SDLK_g -> setNewIcon "(:) \"g\""
-					SDL.SDLK_h -> setNewIcon "(:) \"h\""
-					SDL.SDLK_i -> setNewIcon "(:) \"i\""
-					SDL.SDLK_j -> setNewIcon "(:) \"j\""
-					SDL.SDLK_k -> setNewIcon "(:) \"k\""
-					SDL.SDLK_l -> setNewIcon "(:) \"l\""
-					SDL.SDLK_m -> setNewIcon "(:) \"m\""
-					SDL.SDLK_n -> setNewIcon "(:) \"n\""
-					SDL.SDLK_o -> setNewIcon "(:) \"o\""
-					SDL.SDLK_p -> setNewIcon "(:) \"p\""
-					SDL.SDLK_q -> setNewIcon "(:) \"q\""
-					SDL.SDLK_r -> setNewIcon "(:) \"r\""
-					SDL.SDLK_s -> setNewIcon "(:) \"s\""
-					SDL.SDLK_t -> setNewIcon "(:) \"t\""
-					SDL.SDLK_u -> setNewIcon "(:) \"u\""
-					SDL.SDLK_v -> setNewIcon "(:) \"v\""
-					SDL.SDLK_w -> setNewIcon "(:) \"w\""
-					SDL.SDLK_x -> setNewIcon "(:) \"x\""
-					SDL.SDLK_y -> setNewIcon "(:) \"y\""
-					SDL.SDLK_z -> setNewIcon "(:) \"z\""
+					SDL.SDLK_a -> setNewIcon "(:) 'a'"
+					SDL.SDLK_b -> setNewIcon "(:) 'b'"
+					SDL.SDLK_c -> setNewIcon "(:) 'c'"
+					SDL.SDLK_d -> setNewIcon "(:) 'd'"
+					SDL.SDLK_e -> setNewIcon "(:) 'e'"
+					SDL.SDLK_f -> setNewIcon "(:) 'f'"
+					SDL.SDLK_g -> setNewIcon "(:) 'g'"
+					SDL.SDLK_h -> setNewIcon "(:) 'h'"
+					SDL.SDLK_i -> setNewIcon "(:) 'i'"
+					SDL.SDLK_j -> setNewIcon "(:) 'j'"
+					SDL.SDLK_k -> setNewIcon "(:) 'k'"
+					SDL.SDLK_l -> setNewIcon "(:) 'l'"
+					SDL.SDLK_m -> setNewIcon "(:) 'm'"
+					SDL.SDLK_n -> setNewIcon "(:) 'n'"
+					SDL.SDLK_o -> setNewIcon "(:) 'o'"
+					SDL.SDLK_p -> setNewIcon "(:) 'p'"
+					SDL.SDLK_q -> setNewIcon "(:) 'q'"
+					SDL.SDLK_r -> setNewIcon "(:) 'r'"
+					SDL.SDLK_s -> setNewIcon "(:) 's'"
+					SDL.SDLK_t -> setNewIcon "(:) 't'"
+					SDL.SDLK_u -> setNewIcon "(:) 'u'"
+					SDL.SDLK_v -> setNewIcon "(:) 'v'"
+					SDL.SDLK_w -> setNewIcon "(:) 'w'"
+					SDL.SDLK_x -> setNewIcon "(:) 'x'"
+					SDL.SDLK_y -> setNewIcon "(:) 'y'"
+					SDL.SDLK_z -> setNewIcon "(:) 'z'"
 					SDL.SDLK_ESCAPE -> cancelInput
 					otherwise -> cancelInput
 		otherwise -> eventHandler tvms

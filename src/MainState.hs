@@ -26,10 +26,11 @@ import qualified Data.Map as Map
 
 import Icon as Icon
 import qualified GuiState as GUI
+import qualified Point as P
 
 data SaveableState = SaveableState {
-   position :: GUI.Point,
-   grid :: Map.Map GUI.Point Int
+   position :: P.Point,
+   grid :: Map.Map P.Point Int
 } deriving Generic
 
 instance Serialize SaveableState
@@ -40,13 +41,13 @@ data MainState = MainState {
 } 
 
 -- accessors
-changeGrid :: (Map.Map GUI.Point Int -> Map.Map GUI.Point Int) -> SaveableState -> SaveableState
+changeGrid :: (Map.Map P.Point Int -> Map.Map P.Point Int) -> SaveableState -> SaveableState
 changeGrid f ss = ss { grid = f (grid ss) }
 
 changeSaveable :: (SaveableState -> SaveableState) -> MainState -> MainState
 changeSaveable f ms = ms { saveableState = f (saveableState ms) } 
 
-changePosition :: (GUI.Point -> GUI.Point) -> SaveableState -> SaveableState
+changePosition :: (P.Point -> P.Point) -> SaveableState -> SaveableState
 changePosition f ss = let
 		newPosition = f (position ss) 
 	in case newPosition of
@@ -63,13 +64,13 @@ makeDefaultState :: GUI.GuiState -> MainState
 makeDefaultState = MainState (SaveableState (0,1) testInitMap)
 
 -- exported functions
-hasIconAt :: MainState -> GUI.Point -> Bool
+hasIconAt :: MainState -> P.Point -> Bool
 hasIconAt mainState point = Map.member point . grid . saveableState $ mainState
 
-hasIconAtSS :: SaveableState -> GUI.Point -> Bool
+hasIconAtSS :: SaveableState -> P.Point -> Bool
 hasIconAtSS ss point = Map.member point . grid $ ss
 
-getIconAt :: MainState -> GUI.Point -> Icon.Icon
+getIconAt :: MainState -> P.Point -> Icon.Icon
 getIconAt mainState point = let
 		_icons = GUI.icons . guiState $ mainState
 		_grid = grid . saveableState $ mainState
@@ -81,7 +82,7 @@ getIconAtCursor mainState = getIconAt mainState . position . saveableState $ mai
 getIconID :: SaveableState -> Int
 getIconID ss = (grid ss) Map.! (position ss)
 
-setIconAt :: GUI.Point -> Int -> MainState -> MainState 
+setIconAt :: P.Point -> Int -> MainState -> MainState 
 setIconAt point id = changeSaveable (changeGrid (Map.insert point id))
 	
 setIconAtCursor :: Int -> MainState -> MainState 
@@ -93,7 +94,7 @@ setIconAtCursorByName name mainState = let
 		id = getID iconSet name
 	in setIconAtCursor id mainState
 
-removeIconAt :: GUI.Point -> MainState -> MainState 
+removeIconAt :: P.Point -> MainState -> MainState 
 removeIconAt point = changeSaveable (changeGrid (Map.delete point))
 
 removeIconAtCursor :: MainState -> MainState

@@ -1,6 +1,5 @@
 module GuiState 
 	( GuiState(..)
-	, Point
 	, InputContext(..)
 	, initGui
 	, changeContext
@@ -10,8 +9,6 @@ import Graphics.UI.SDL as SDL
 import Data.Map as Map
 
 import Icon as Icon
-
-type Point = (Int, Int)
 
 data InputContext = IsInsert {
 } | IsTextInsert | NoContext 
