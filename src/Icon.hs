@@ -83,6 +83,12 @@ predefinedFunctions =
 	[ ( "start", "main = " ) 
 	, ( "emptylist", "[]" )
 	, ( "putstrln", "putStrLn" )
+	, ( "sequence", "(>>)" )
+	, ( "id", "id" )
+	, ( "cons", "(:)" )
+	, ( "map", "fmap" )
+	, ( "foldr", "foldr" )
+	, ( "show", "show" )
 	]
 
 startIconIndex = 26 + length predefinedFunctions

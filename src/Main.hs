@@ -141,7 +141,12 @@ eventHandler tvms = do
 						eventHandler tvms
 					SDL.SDLK_u -> setNewIcon "[]"
 					SDL.SDLK_e -> setNewIcon "putStrLn"
-					-- SDL.SDLK_o -> setNewIcon "3"
+					SDL.SDLK_o -> setNewIcon "(>>)"
+					SDL.SDLK_a -> setNewIcon "id"
+					SDL.SDLK_h -> setNewIcon "(:)"
+					SDL.SDLK_t -> setNewIcon "fmap"
+					SDL.SDLK_n -> setNewIcon "foldr"
+					SDL.SDLK_s -> setNewIcon "show"
 					SDL.SDLK_ESCAPE -> cancelInput
 					otherwise -> cancelInput
 			IsTextInsert -> let 
