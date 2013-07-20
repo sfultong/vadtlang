@@ -7,6 +7,7 @@ import qualified Data.Serialize as Serial
 
 import MainState
 import GuiState
+import DrawFeedbackGrid 
 import qualified Compile
 import qualified Icon 
 import qualified Point as P
@@ -16,7 +17,7 @@ iconYSize = 16
 
 drawCursor :: MainState -> IO Bool
 drawCursor mainState = let 
-		(xSize, ySize) = screenSize $ guiState mainState
+		(xSize, ySize) = iconGridSize $ guiState mainState
 		surface_ = surface $ guiState mainState
 		[centerX, centerY] = map (\x -> div x 2) [xSize, ySize]
 		rect = SDL.Rect (centerX - 1) (centerY - 1) (centerX + iconXSize) (centerY + iconYSize)
@@ -25,7 +26,7 @@ drawCursor mainState = let
 
 drawScreen :: MainState -> IO ()
 drawScreen mainstate = let
-		(xSize, ySize) = screenSize $ guiState mainstate
+		(xSize, ySize) = iconGridSize $ guiState mainstate
 		[centerX, centerY] = map (\x -> div x 2) [xSize, ySize]
 		surface_ = surface $ guiState mainstate
 		(px,py) = position $ saveableState mainstate
@@ -48,6 +49,7 @@ drawScreen mainstate = let
 		clearScreen
 		mapM_ drawIcon positions
 		drawCursor mainstate
+		drawFeedback mainstate
 		SDL.flip surface_
 
 main = do

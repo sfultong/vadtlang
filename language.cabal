@@ -19,6 +19,7 @@ Executable  vooj
                  ,    containers >= 0.4.2.1
                  ,    directory >= 1.1.0.2
                  ,    SDL-gfx >= 0.6.0
+                 ,    SDL-ttf >= 0.6.0
                  ,    stm >= 2.2
                  ,    ghc-prim
                  ,    cereal >= 0.3.5.1
