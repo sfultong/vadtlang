@@ -22,10 +22,16 @@ moveByDirection d cs = let
 		newSS = MS.changePosition (const newPos) $ saveableState cs
 	in cs { saveableState = newSS, fromDirection = P.oppositeDirection d }
 
+changeSS :: (MS.SaveableState -> MS.SaveableState) -> CompileState -> CompileState
+changeSS f cs = cs { saveableState = f $ saveableState cs }
+
 getIconDefinition :: CompileState -> String
 getIconDefinition cs = let
+		iconID = MS.getIconID $ saveableState cs
 		icon = Icon.getByID (iconSet cs) (MS.getIconID (saveableState cs))
-	in Icon.definition icon
+	in case MS.hasUserFunctionSS iconID $ saveableState cs of
+		False -> Icon.definition icon
+		True -> "(" ++ compileR (changeSS (MS.setActiveGridSS iconID) cs) ++ ")"
 
 hasAdjacentIconAt :: CompileState -> P.Direction -> Bool
 hasAdjacentIconAt cs d = let

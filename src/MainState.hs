@@ -5,7 +5,7 @@ module MainState
 	, SaveableState(..)
 	, makeDefaultState
 	, changePosition
-	, changeGrid
+	, changeCurrentGrid
 	, changeSaveable
 	, changeGui
 	, hasIconAt
@@ -18,6 +18,12 @@ module MainState
 	, setIconAtCursorByName
 	, removeIconAt
 	, removeIconAtCursor
+	, newUserFunction
+	, hasUserFunctionSS
+	, setActiveGridSS
+	, setActiveGrid
+	, loadState
+	, saveState
 	) where
 
 import GHC.Generics
@@ -27,10 +33,13 @@ import qualified Data.Map as Map
 import Icon as Icon
 import qualified GuiState as GUI
 import qualified Point as P
+import qualified Data.ByteString as B
+import qualified Data.Serialize as Serial
 
 data SaveableState = SaveableState {
    position :: P.Point,
-   grid :: Map.Map P.Point Int
+	currentGrid :: Int,
+   grids ::  Map.Map Int (Map.Map P.Point Int)
 } deriving Generic
 
 instance Serialize SaveableState
@@ -41,8 +50,8 @@ data MainState = MainState {
 } 
 
 -- accessors
-changeGrid :: (Map.Map P.Point Int -> Map.Map P.Point Int) -> SaveableState -> SaveableState
-changeGrid f ss = ss { grid = f (grid ss) }
+changeCurrentGrid :: (Map.Map P.Point Int -> Map.Map P.Point Int) -> SaveableState -> SaveableState
+changeCurrentGrid f ss = ss { grids = Map.adjust f (currentGrid ss) (grids ss) }
 
 changeSaveable :: (SaveableState -> SaveableState) -> MainState -> MainState
 changeSaveable f ms = ms { saveableState = f (saveableState ms) } 
@@ -57,11 +66,16 @@ changePosition f ss = let
 changeGui :: (GUI.GuiState -> GUI.GuiState) -> MainState -> MainState
 changeGui f ms = ms { guiState = f (guiState ms) }
 
+grid :: SaveableState -> Map.Map P.Point Int
+grid ss = grids ss Map.! currentGrid ss
+
 -- setup
 testInitMap = Map.fromList [((0,0), Icon.startIconIndex)]
 
+testInitGrids = Map.fromList [(0, testInitMap)]
+
 makeDefaultState :: GUI.GuiState -> MainState
-makeDefaultState = MainState (SaveableState (0,1) testInitMap)
+makeDefaultState = MainState (SaveableState (0,1) 0 testInitGrids)
 
 -- exported functions
 hasIconAt :: MainState -> P.Point -> Bool
@@ -83,7 +97,9 @@ getIconID :: SaveableState -> Int
 getIconID ss = (grid ss) Map.! (position ss)
 
 setIconAt :: P.Point -> Int -> MainState -> MainState 
-setIconAt point id = changeSaveable (changeGrid (Map.insert point id))
+setIconAt point id mainState = case hasID id . GUI.icons $ guiState mainState of -- check if this ID is valid
+	False -> mainState -- if not valid id, don't change state
+	True -> changeSaveable (changeCurrentGrid (Map.insert point id)) mainState
 	
 setIconAtCursor :: Int -> MainState -> MainState 
 setIconAtCursor id mainState = setIconAt (position $ saveableState mainState) id mainState 
@@ -95,9 +111,44 @@ setIconAtCursorByName name mainState = let
 	in setIconAtCursor id mainState
 
 removeIconAt :: P.Point -> MainState -> MainState 
-removeIconAt point = changeSaveable (changeGrid (Map.delete point))
+removeIconAt point = changeSaveable (changeCurrentGrid (Map.delete point))
 
 removeIconAtCursor :: MainState -> MainState
 removeIconAtCursor mainState = removeIconAt (position $ saveableState mainState) mainState 
 
+newUserFunction :: MainState -> IO MainState
+newUserFunction mainState = do
+	newGuiState <- GUI.changeGuiForNewIcon $ guiState mainState
+	let
+		newIconIndex = Icon.maxIcon . GUI.icons $ newGuiState
+		newGrid = Map.fromList [((0,0), newIconIndex)]
+		newGrids = Map.insert newIconIndex newGrid . grids $ saveableState mainState
+		newSaveableState = (saveableState mainState) { currentGrid = newIconIndex, grids = newGrids, position = (0,1) }
+	return mainState { guiState = newGuiState, saveableState = newSaveableState }
 
+hasUserFunctionSS :: Int -> SaveableState -> Bool
+hasUserFunctionSS id ss = Map.member id . grids $ ss
+
+-- TODO - consider finding the correct outlet from the function definition icon, and setting the position to that position
+-- that would avoid errors in compiling where it expects the outlet to be below the icon 
+setActiveGridSS :: Int -> SaveableState -> SaveableState
+setActiveGridSS gridNum ss = case hasUserFunctionSS gridNum ss of
+	True -> ss { currentGrid = gridNum, position = (0,1) } 
+	False -> ss
+
+setActiveGrid :: Int -> MainState -> MainState
+setActiveGrid id = changeSaveable $ setActiveGridSS id
+
+saveState :: MainState -> IO ()
+saveState ms = B.writeFile dataFile . Serial.encode . saveableState $ ms
+
+loadState :: MainState -> IO (MainState)
+loadState ms = do
+   bstring <- B.readFile dataFile
+   case Serial.decode bstring of
+      Left s -> do
+         putStrLn $ "error reading/decoding file: " ++ s
+         return ms
+      Right newSaveableState -> return ms { saveableState = newSaveableState }
+
+dataFile = "language.dat"

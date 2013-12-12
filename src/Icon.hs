@@ -4,20 +4,32 @@ module Icon
 	, IconSet(IconSet)
 	, Icon.insert
 	, getByName
+	, hasID
 	, getByID
 	, getID
 	, getDefaultIcons
 	, startIconIndex
+	, startFunctionsIndex
+	, startUserFunctionsIndex
+	, maxIcon
+	, iconXSize
+	, iconYSize
 	) where
 
 import System.Directory
 import Control.Monad (liftM)
 import qualified Data.Map as Map
 import qualified Data.IntMap as IntMap
+import qualified Data.IntSet as IntSet
 import qualified Graphics.UI.SDL as SDL
 
 iconDataDir = "/tmp/share/vooj-0.1/data"
 functionIconDir = iconDataDir ++ "/functions"
+
+iconXSize :: Int
+iconXSize = 16
+iconYSize :: Int
+iconYSize = 16
 
 data Icon = Icon {
    definition :: String,
@@ -47,11 +59,17 @@ insert icon (IconSet iData nameKey) = let
 getByName :: IconSet -> String -> Icon
 getByName (IconSet iData nameKey) name_ = (iData IntMap.!) $ nameKey Map.! name_
 
+hasID :: Int -> IconSet -> Bool
+hasID id (IconSet iData _) = IntMap.member id iData
+
 getByID :: IconSet -> Int -> Icon
 getByID (IconSet iData _) key = iData IntMap.! key
 
 getID :: IconSet -> String -> Int
 getID iconSet name = (nameKey iconSet) Map.! name
+
+maxIcon :: IconSet -> Int
+maxIcon is = IntSet.findMax . IntMap.keysSet $ iData is
 
 getTextIcons :: IO [Icon]
 getTextIcons = let
@@ -66,6 +84,12 @@ getTextIcons = let
 			icons = zipWith (\x y -> Icon (createName x) (Just y) fontMap) ['a' .. 'z'] rects
 		return icons
 
+{--
+	0 : null icon
+	1-26: letters
+	27: start icon
+	28- : predefined functions
+--}
 getDefaultIcons :: IO IconSet
 getDefaultIcons = do
 	dirContents <- getDirectoryContents functionIconDir
@@ -80,8 +104,7 @@ getDefaultIcons = do
 -- association list of icon names to their code definitions
 predefinedFunctions :: [(String, String)]
 predefinedFunctions =
-	[ ( "start", "main = " ) 
-	, ( "emptylist", "[]" )
+	[ ( "emptylist", "[]" )
 	, ( "putstrln", "putStrLn" )
 	, ( "sequence", "(>>)" )
 	, ( "id", "id" )
@@ -89,6 +112,10 @@ predefinedFunctions =
 	, ( "map", "fmap" )
 	, ( "foldr", "foldr" )
 	, ( "show", "show" )
+	, ( "start", "main = " ) 
 	]
 
-startIconIndex = 26 + length predefinedFunctions
+startIconIndex = 27
+startFunctionsIndex = startIconIndex + 1 -- skip letters and skip main
+startUserFunctionsIndex = startFunctionsIndex + length predefinedFunctions - 1
+

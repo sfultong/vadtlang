@@ -1,26 +1,21 @@
 import qualified Graphics.UI.SDL as SDL
 import qualified Graphics.UI.SDL.Primitives as PSDL
-import qualified Data.Map as Map
 import qualified Control.Concurrent.STM as STM
-import qualified Data.ByteString as B
-import qualified Data.Serialize as Serial
 
 import MainState
 import GuiState
 import DrawFeedbackGrid 
+import Input
 import qualified Compile
 import qualified Icon 
 import qualified Point as P
-
-iconXSize = 16
-iconYSize = 16
 
 drawCursor :: MainState -> IO Bool
 drawCursor mainState = let 
 		(xSize, ySize) = iconGridSize $ guiState mainState
 		surface_ = surface $ guiState mainState
 		[centerX, centerY] = map (\x -> div x 2) [xSize, ySize]
-		rect = SDL.Rect (centerX - 1) (centerY - 1) (centerX + iconXSize) (centerY + iconYSize)
+		rect = SDL.Rect (centerX - 1) (centerY - 1) (centerX + Icon.iconXSize) (centerY + Icon.iconYSize)
 	in PSDL.rectangle surface_ rect (SDL.Pixel (256 * 256 * 256 - 1)) 
 
 
@@ -30,8 +25,8 @@ drawScreen mainstate = let
 		[centerX, centerY] = map (\x -> div x 2) [xSize, ySize]
 		surface_ = surface $ guiState mainstate
 		(px,py) = position $ saveableState mainstate
-		xIcons = div xSize (iconXSize + 1)
-		yIcons = div ySize (iconYSize + 1)
+		xIcons = div xSize (Icon.iconXSize + 1)
+		yIcons = div ySize (Icon.iconYSize + 1)
 		positions = [(x, y) | -- positions of icons 
 			x <- [px - div xIcons 2.. px + div xIcons 2], 
 			y <- [py - div yIcons 2.. py + div yIcons 2]]
@@ -40,8 +35,8 @@ drawScreen mainstate = let
 			True -> do 
 				let drawIcon = getIconAt mainstate (x,y)
 				SDL.blitSurface (Icon.pic drawIcon) (Icon.offset drawIcon) surface_ . Just $ SDL.Rect
-					(centerX + (x - px) * (iconXSize + 1))
-					(centerY + (y - py) * (iconYSize + 1))
+					(centerX + (x - px) * (Icon.iconXSize + 1))
+					(centerY + (y - py) * (Icon.iconYSize + 1))
 					0 0
 				return ()
 			False -> return ()
@@ -59,20 +54,7 @@ main = do
 	drawScreen state
 	eventHandler tvms
 
-dataFile = "language.dat"
 compileFile = "out.hs"
-
-saveState :: MainState -> IO ()
-saveState ms = B.writeFile dataFile . Serial.encode . saveableState $ ms
-
-loadState :: MainState -> IO (MainState)
-loadState ms = do
-	bstring <- B.readFile dataFile
-	case Serial.decode bstring of
-		Left s -> do
-			putStrLn $ "error reading/decoding file: " ++ s
-			return ms
-		Right newSaveableState -> return ms { saveableState = newSaveableState }
 
 eventHandler :: STM.TVar MainState -> IO ()
 eventHandler tvms = do
@@ -98,12 +80,36 @@ eventHandler tvms = do
 					SDL.SDLK_i -> do -- INPUT
 						STM.atomically $ do
 							oldMainState <- STM.readTVar tvms
-							STM.writeTVar tvms $ changeGui (changeContext (const IsInsert)) oldMainState
+							STM.writeTVar tvms $ changeGui (changeContext (const (IsInsert []))) oldMainState
 						eventHandler tvms
 					SDL.SDLK_d -> do -- TEXT INPUT
 						STM.atomically $ do
 							oldMainState <- STM.readTVar tvms
 							STM.writeTVar tvms $ changeGui (changeContext (const IsTextInsert)) oldMainState
+						eventHandler tvms
+					SDL.SDLK_a -> do -- NEW FUNCTION
+						ms <- STM.atomically $ STM.readTVar tvms
+						newMainState <- newUserFunction ms
+						drawScreen newMainState
+						STM.atomically $ STM.writeTVar tvms newMainState
+						eventHandler tvms
+					SDL.SDLK_s -> do -- RETURN TO MAIN
+						ms <- STM.atomically $ do
+							oldMainState <- STM.readTVar tvms
+							let newMainState = setActiveGrid 0 $ oldMainState
+							STM.writeTVar tvms $ newMainState
+							return newMainState
+						drawScreen ms
+						eventHandler tvms
+					SDL.SDLK_n -> do -- GO TO FUNCTION DEFINITION
+						ms <- STM.atomically $ do
+							oldMainState <- STM.readTVar tvms
+							let 
+								gridNum = getIconID $ saveableState oldMainState
+								newMainState = setActiveGrid gridNum $ oldMainState 
+							STM.writeTVar tvms $ newMainState
+							return newMainState
+						drawScreen ms
 						eventHandler tvms
 					SDL.SDLK_QUOTE -> do -- LOAD
 						oldMainState <- STM.atomically . STM.readTVar $ tvms
@@ -123,9 +129,9 @@ eventHandler tvms = do
 						eventHandler tvms
 					SDL.SDLK_ESCAPE -> return () -- EXIT
 					otherwise -> eventHandler tvms
-			IsInsert ->	let
+			IsInsert keyList -> let
 					setNewIcon fun = do
-						newMainState <- changeMainState $ changeGui (changeContext (const NoContext)) . (setIconAtCursorByName fun)
+						newMainState <- changeMainState $ changeGui (changeContext (const NoContext)) . (setIconAtCursor fun)
 						drawScreen newMainState
 						eventHandler tvms
 					cancelInput = do
@@ -133,24 +139,22 @@ eventHandler tvms = do
 							oldMainState <- STM.readTVar tvms
 							STM.writeTVar tvms $ changeGui (changeContext (const NoContext)) oldMainState
 						eventHandler tvms
-				in case k of
-					SDL.SDLK_i -> do -- clear icon
-						newMainState <- STM.atomically $ do
+				in case (k, decodeNumber (k:keyList)) of
+					(SDL.SDLK_ESCAPE, _) -> cancelInput
+					(_, Nothing) -> do
+						STM.atomically $ do
 							oldMainState <- STM.readTVar tvms
-							STM.writeTVar tvms . removeIconAtCursor . changeGui (changeContext (const NoContext)) $ oldMainState
-							STM.readTVar tvms
-						drawScreen newMainState
+							STM.writeTVar tvms $ changeGui (addKeyToInputContext k) oldMainState
 						eventHandler tvms
-					SDL.SDLK_u -> setNewIcon "[]"
-					SDL.SDLK_e -> setNewIcon "putStrLn"
-					SDL.SDLK_o -> setNewIcon "(>>)"
-					SDL.SDLK_a -> setNewIcon "id"
-					SDL.SDLK_h -> setNewIcon "(:)"
-					SDL.SDLK_t -> setNewIcon "fmap"
-					SDL.SDLK_n -> setNewIcon "foldr"
-					SDL.SDLK_s -> setNewIcon "show"
-					SDL.SDLK_ESCAPE -> cancelInput
-					otherwise -> cancelInput
+					(_, Just n) -> case n of
+						0 -> do -- clear icon
+							newMainState <- STM.atomically $ do
+								oldMainState <- STM.readTVar tvms
+								STM.writeTVar tvms . removeIconAtCursor . changeGui (changeContext (const NoContext)) $ oldMainState
+								STM.readTVar tvms
+							drawScreen newMainState
+							eventHandler tvms
+						n -> setNewIcon (n + Icon.startFunctionsIndex - 1) 
 			IsTextInsert -> let 
 					setNewIcon name = do
 						newMainState <- changeMainState $ changeSaveable (changePosition (\(x, y) -> (x + 1, y))) . setIconAtCursorByName name 
